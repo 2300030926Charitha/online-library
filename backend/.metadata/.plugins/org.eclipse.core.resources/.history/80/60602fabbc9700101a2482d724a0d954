@@ -1,0 +1,8 @@
+package dto;
+
+public class SignupRequest {
+    private String email;
+    private String password;
+    // Getters and setters
+	
+}

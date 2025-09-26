@@ -1,0 +1,61 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Subject;
+import com.example.demo.repository.SubjectRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/subjects")
+@CrossOrigin(origins = "http://localhost:5173") // adjust port if needed
+public class SubjectController {
+
+    private final SubjectRepository repo;
+
+    public SubjectController(SubjectRepository repo) {
+        this.repo = repo;
+    }
+
+    // ✅ Get all subjects
+    @GetMapping
+    public List<Subject> getAllSubjects() {
+        return repo.findAll();
+    }
+
+    // ✅ Add subject
+    @PostMapping
+    public ResponseEntity<?> addSubject(@RequestBody Subject subject) {
+        Subject saved = repo.save(subject);
+        return ResponseEntity.ok(Map.of(
+                "message", "Subject added successfully",
+                "subject", saved
+        ));
+    }
+
+    // ✅ Update subject
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSubject(@PathVariable Long id, @RequestBody Subject updated) {
+        return repo.findById(id).map(subject -> {
+            subject.setTitle(updated.getTitle());
+            subject.setDescription(updated.getDescription());
+            Subject saved = repo.save(subject);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Subject updated successfully",
+                    "subject", saved
+            ));
+        }).orElse(ResponseEntity.badRequest().body(Map.of("error", "Subject not found")));
+    }
+
+    // ✅ Delete subject
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSubject(@PathVariable Long id) {
+        if (!repo.existsById(id)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Subject not found"));
+        }
+        repo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "Subject deleted successfully"));
+    }
+}

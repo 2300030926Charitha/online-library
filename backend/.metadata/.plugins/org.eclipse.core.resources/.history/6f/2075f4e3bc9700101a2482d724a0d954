@@ -1,0 +1,65 @@
+package controller;
+
+import Model.User;
+import Repository.UserRepository;
+import dto.SignupRequest;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+import jWT.JWTUtility;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:5175")
+public class UserController {
+
+    @Autowired
+    private UserRepository userRepo;
+    private PasswordEncoder passwordEncoder;
+
+    private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+    // Signup
+    @PostMapping("/signup")
+    public ResponseEntity<?> registerUser(@RequestBody SignupRequest signUpRequest) {
+        if (UserRepository.existsByEmail(signUpRequest.getEmail())) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("message", "Email is already taken"));
+        }
+
+        // create new user
+        User user = new User(signUpRequest.getUsername(),
+                             signUpRequest.getEmail(),
+                             passwordEncoder.encode(signUpRequest.getPassword()));
+
+        UserRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "User registered successfully"));
+    }
+
+
+    // Login
+    @PostMapping("/login")
+    public String login(@RequestBody User loginUser) {
+        User user = userRepo.findByEmail(loginUser.getEmail());
+        if (user != null && encoder.matches(loginUser.getPassword(), user.getPassword())) {
+            return JWTUtility.generateToken(user.getEmail());
+        }
+        return "❌ Invalid email or password!";
+    }
+
+    // Protected endpoint
+    @GetMapping("/profile")
+    public String profile(@RequestHeader("Authorization") String token) {
+        try {
+            String email = JWTUtility.validateToken(token.replace("Bearer ", ""));
+            return "🔐 Profile data for user: " + email;
+        } catch (Exception e) {
+            return "❌ Invalid or expired token!";
+        }
+    }
+}

@@ -1,0 +1,95 @@
+/* ---------------------- */
+/* 👩‍💻 Authors Module Styles */
+/* ---------------------- */
+.authors-container {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.authors-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #001f80;
+}
+
+/* Form styles */
+.authors-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.authors-form input[type="text"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.authors-form input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.authors-form button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.authors-form button:hover {
+  background-color: #0056b3;
+}
+
+/* Table styles */
+.authors-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.authors-table th,
+.authors-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.authors-table th {
+  background-color: #001f80;
+  color: white;
+}
+
+.authors-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.authors-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}

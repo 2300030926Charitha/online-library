@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Charitha@123
+      MYSQL_DATABASE: online_library
+    ports:
+      - "3307:3306"  # Host port 3307 maps to container 3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend/online-library
+    container_name: backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8081:8081"  # Host port 8081 maps to container 8080
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/online_library
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Charitha@123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
+      SERVER_PORT: 8081
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+    networks:
+      - app-network
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:8081  # Use inside Docker network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local

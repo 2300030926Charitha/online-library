@@ -1,0 +1,34 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.repository.BookRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:5173") // ✅ allow React frontend
+public class BookController {
+
+    private final BookRepository repo;
+
+    public BookController(BookRepository repo) {
+        this.repo = repo;
+    }
+
+    // ✅ Fetch all books
+    @GetMapping
+    public ResponseEntity<List<Book>> getAllBooks() {
+        return ResponseEntity.ok(repo.findAll());
+    }
+
+    // ✅ Add new book with success message
+    @PostMapping
+    public ResponseEntity<?> addBook(@RequestBody Book book) {
+        repo.save(book);
+        return ResponseEntity.ok(Map.of("message", "Book added successfully!"));
+    }
+}

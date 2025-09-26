@@ -1,0 +1,49 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.repository.BookRepository;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:1573")
+public class BookController {
+    private final BookRepository repo;
+
+    public BookController(BookRepository repo) {
+        this.repo = repo;
+    }
+
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return repo.findAll();
+    }
+
+    @PostMapping
+    public Book addBook(@RequestBody Book book) {
+        return repo.save(book);
+    }
+
+    @PutMapping("/api/Books/{id}")
+    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book bookDetails) {
+        return BookRepository.findById(id)
+                .map(book -> {
+                    book.setTitle(bookDetails.getTitle());
+                    book.setAuthor(bookDetails.getAuthor());
+                    book.setSubject(bookDetails.getSubject());
+                    book.setYear(bookDetails.getYear());
+                    Book updated = BookRepository.save(book);
+                    return ResponseEntity.ok(updated);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteBook(@PathVariable Long id) {
+        repo.deleteById(id);
+    }
+}

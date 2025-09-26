@@ -1,0 +1,220 @@
+/* General Reset */
+body, html, #root, .app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+/* Navbar */
+.navbar {
+  background-color: #001f80;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+}
+
+.navbar .logo {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.navbar .nav-links a {
+  margin-left: 20px;
+  text-decoration: none;
+  color: white;
+  transition: color 0.3s;
+}
+
+.navbar .nav-links a:hover {
+  color: #ddd;
+}
+
+/* Hero Section */
+.hero {
+  background-color: #1e1e1e;
+  color: white;
+  text-align: center;
+  padding: 100px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 5vw, 36px);
+  margin-bottom: 20px;
+}
+
+.hero p {
+  margin-bottom: 30px;
+  font-size: 18px;
+  color: #bbb;
+}
+
+.buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.login-btn {
+  background-color: #001f80;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+}
+
+.login-btn:hover {
+  background-color: #002bb5;
+}
+
+.signup-btn {
+  background-color: #ddd;
+  color: black;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+}
+
+.signup-btn:hover {
+  background-color: #ccc;
+}
+
+.logout-btn {
+  background-color: #e63946;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+}
+
+.logout-btn:hover {
+  background-color: #c1121f;
+}
+
+/* Footer */
+.footer {
+  background-color: #f5f5f5;
+  text-align: center;
+  padding: 20px 15px;
+  font-size: 14px;
+}
+
+.footer-links {
+  margin-bottom: 10px;
+}
+
+.footer-links a {
+  margin: 0 20px;
+  text-decoration: none;
+  color: black;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 350px;
+  position: relative;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.modal h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #001f80;
+}
+
+.modal label {
+  display: block;
+  margin: 10px 0 5px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.modal input, 
+.modal select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.modal input:focus, 
+.modal select:focus {
+  border-color: #001f80;
+  outline: none;
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  background-color: #001f80;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.submit-btn:hover {
+  background-color: #002bb5;
+}
+
+/* Close button */
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+
+.close-btn:hover {
+  color: black;
+}
+
+/* Error message */
+.error {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}

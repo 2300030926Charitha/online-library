@@ -1,0 +1,39 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Subject;
+import com.example.demo.repository.SubjectRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/subjects")
+@CrossOrigin(origins = "http://localhost:3000")
+public class SubjectController {
+    private final SubjectRepository repo;
+
+    public SubjectController(SubjectRepository repo) {
+        this.repo = repo;
+    }
+
+    @GetMapping
+    public List<Subject> getAllSubjects() {
+        return repo.findAll();
+    }
+
+    @PostMapping
+    public Subject addSubject(@RequestBody Subject subject) {
+        return repo.save(subject);
+    }
+
+    @PutMapping("/{id}")
+    public Subject updateSubject(@PathVariable Long id, @RequestBody Subject subject) {
+        subject.setId(id); // works now
+        return repo.save(subject);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteSubject(@PathVariable Long id) {
+        repo.deleteById(id);
+    }
+}

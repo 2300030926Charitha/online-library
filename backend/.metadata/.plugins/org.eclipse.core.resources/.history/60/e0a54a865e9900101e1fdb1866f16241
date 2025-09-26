@@ -1,0 +1,39 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.repository.BookRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:5173") // ✅ Allow frontend
+public class BookController {
+
+    private final BookRepository repo;
+
+    public BookController(BookRepository repo) {
+        this.repo = repo;
+    }
+
+    // ✅ Get all books
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return repo.findAll();
+    }
+
+    // ✅ Add new book
+    @PostMapping
+    public String addBook(@RequestBody Book book) {
+        repo.save(book);
+        return "📚 Book added successfully!";
+    }
+
+    // ✅ Delete book
+    @DeleteMapping("/{id}")
+    public String deleteBook(@PathVariable Long id) {
+        repo.deleteById(id);
+        return "🗑️ Book deleted successfully!";
+    }
+}
