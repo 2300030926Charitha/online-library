@@ -1,0 +1,111 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.repository.BookRepository;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:5173") // allow frontend React app
+public class BookController {
+
+    private final BookRepository repo;
+
+    private final String UPLOAD_DIR = "uploads/";
+
+    public BookController(BookRepository repo) {
+        this.repo = repo;
+    }
+
+    // ✅ Fetch all books
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return repo.findAll();
+    }
+
+    // ✅ Add a new book (simple metadata only)
+    @PostMapping
+    public ResponseEntity<?> addBook(@RequestBody Book book) {
+        Book savedBook = repo.save(book);
+        return ResponseEntity.ok().body(
+                Map.of(
+                        "message", "✅ Book added successfully!",
+                        "book", savedBook
+                )
+        );
+    }
+
+    // ✅ Upload a book file (PDF, DOCX, etc.)
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadBook(
+            @RequestParam("title") String title,
+            @RequestParam("author") String author,
+            @RequestParam("year") int year,
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        File uploadDir = new File(UPLOAD_DIR);
+        if (!uploadDir.exists()) uploadDir.mkdirs();
+
+        String filePath = UPLOAD_DIR + file.getOriginalFilename();
+        file.transferTo(new File(filePath));
+
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setYear(year);
+        book.setFilePath(filePath);
+
+        Book savedBook = repo.save(book);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "📘 Book uploaded successfully!",
+                "book", savedBook
+        ));
+    }
+
+    // ✅ Download book file by ID
+    @GetMapping("/download/{id}")
+    public ResponseEntity<Resource> downloadBook(@PathVariable Long id) throws MalformedURLException {
+        Book book = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Book not found with ID " + id));
+
+        Path path = Paths.get(book.getFilePath());
+        Resource resource = new UrlResource(path.toUri());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
+                .body(resource);
+    }
+
+    // ✅ Delete book by ID
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
+        if (!repo.existsById(id)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Book not found with id: " + id));
+        }
+
+        Book book = repo.findById(id).orElse(null);
+        if (book != null && book.getFilePath() != null) {
+            File file = new File(book.getFilePath());
+            if (file.exists()) file.delete(); // remove the file too
+        }
+
+        repo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "🗑️ Book deleted successfully!"));
+    }
+}

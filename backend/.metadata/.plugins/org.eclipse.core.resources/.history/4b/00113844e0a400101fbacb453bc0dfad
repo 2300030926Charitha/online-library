@@ -1,0 +1,48 @@
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable()) // Disable CSRF for Postman/testing
+            .authorizeHttpRequests(auth -> auth
+                // Public endpoints
+                .requestMatchers("/", "/auth/**").permitAll()
+                // Books endpoints
+                .requestMatchers("/api/books/upload").hasRole("AUTHOR")
+                .requestMatchers("/api/books/**/edit").hasRole("AUTHOR") // Optional if you have edit endpoint
+                .requestMatchers("/api/books/**/delete").hasRole("AUTHOR")
+                .requestMatchers("/api/books/**").permitAll() // View/download accessible by everyone
+                // Authors, Subjects endpoints
+                .requestMatchers("/api/authors/**").permitAll()
+                .requestMatchers("/api/subjects/**").permitAll()
+                // All other API endpoints require authentication
+                .requestMatchers("/api/**").authenticated()
+                .anyRequest().permitAll()
+            )
+            .httpBasic(); // Use HTTP Basic Auth for simplicity (you can switch to JWT later)
+
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}

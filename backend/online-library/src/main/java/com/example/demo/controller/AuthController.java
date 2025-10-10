@@ -7,18 +7,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "http://localhost:5173") // ✅ allow frontend
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
+
+    private static final List<String> ALLOWED_ROLES = Arrays.asList("STUDENT", "AUTHOR", "ADMIN");
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -34,17 +37,19 @@ public class AuthController {
 
     // ✅ Login
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User loginRequest) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
-                            loginRequest.getPassword()
+                            loginRequest.get("username"),
+                            loginRequest.get("password")
                     )
             );
 
-            String token = jwtUtil.generateToken(authentication.getName());
-            User user = userRepository.findByUsername(loginRequest.getUsername()).get();
+            User user = userRepository.findByUsername(loginRequest.get("username"))
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String token = jwtUtil.generateToken(user.getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
@@ -58,23 +63,33 @@ public class AuthController {
         }
     }
 
-    // ✅ Signup with Role
+    // ✅ Signup with selectable role
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody User user) {
-        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+    public ResponseEntity<?> signup(@RequestBody Map<String, String> signupRequest) {
+        String username = signupRequest.get("username");
+        String email = signupRequest.get("email");
+        String password = signupRequest.get("password");
+        String role = signupRequest.get("role");
+
+        if (username == null || username.isBlank() ||
+            email == null || email.isBlank() ||
+            password == null || password.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Username, email, and password are required!"));
+        }
+
+        if (userRepository.findByUsername(username).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username already exists!"));
         }
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+
+        if (userRepository.findByEmail(email).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email already exists!"));
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-        // ✅ Default role if none provided
-        if (user.getRole() == null || user.getRole().isBlank()) {
-            user.setRole("STUDENT");
+        if (role == null || role.isBlank() || !ALLOWED_ROLES.contains(role.toUpperCase())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid role! Allowed roles: STUDENT, AUTHOR, ADMIN"));
         }
 
+        User user = new User(username, email, passwordEncoder.encode(password), role.toUpperCase());
         userRepository.save(user);
 
         String token = jwtUtil.generateToken(user.getUsername());

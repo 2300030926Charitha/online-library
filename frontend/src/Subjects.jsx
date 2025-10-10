@@ -1,145 +1,202 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./Subjects.css";
 
 function Subjects() {
   const [subjects, setSubjects] = useState([]);
-  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
-
-  // Track edit mode
   const [editId, setEditId] = useState(null);
+
+  const loggedInRole = localStorage.getItem("role") || "";
+  const token = localStorage.getItem("token") || "";
+
+  // ✅ Redirect if no token or expired
+  useEffect(() => {
+    if (!token) {
+      toast.error("❌ Session expired. Please log in again.");
+      window.location.href = "/login";
+    }
+  }, [token]);
 
   // ✅ Fetch subjects
   const fetchSubjects = async () => {
     try {
-      const response = await fetch("http://localhost:8081/api/subjects");
-      if (!response.ok) throw new Error("Failed to fetch subjects");
-      const data = await response.json();
+      const res = await fetch("http://localhost:8081/api/subjects", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch subjects");
+      const data = await res.json();
       setSubjects(data);
     } catch (err) {
-      setError("❌ " + err.message);
+      toast.error("❌ " + err.message);
     }
   };
 
   useEffect(() => {
-    fetchSubjects();
+    fetchSubjects(); // fetch subjects on load
   }, []);
 
-  // ✅ Add or Update subject
-  const handleSubmit = async (e) => {
+  // ✅ Add new subject
+  const addSubject = async (e) => {
     e.preventDefault();
+    if (!["ADMIN"].includes(loggedInRole)) {
+      return toast.error("❌ Only admins can add subjects");
+    }
 
     try {
-      const url = editId
-        ? `http://backend:8081/api/subjects/${editId}`
-        : "http://localhost:8081/api/subjects";
-
-      const method = editId ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description }),
+      const res = await fetch("http://localhost:8081/api/subjects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, description }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Operation failed");
-
-      setSuccess("✅ " + data.message);
-      setError("");
-      setTitle("");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add subject");
+      toast.success(`✅ Subject "${name}" added successfully!`);
+      setName("");
       setDescription("");
-      setEditId(null);
-
       fetchSubjects();
     } catch (err) {
-      setError("❌ " + err.message);
-      setSuccess("");
+      toast.error("❌ " + err.message);
+    }
+  };
+
+  // ✅ Edit subject
+  const submitEdit = async (e) => {
+    e.preventDefault();
+    if (!editId) return;
+
+    if (!["ADMIN"].includes(loggedInRole)) {
+      return toast.error("❌ Only admins can edit subjects");
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8081/api/subjects/${editId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Update failed");
+      toast.success(`✏️ Subject "${name}" updated successfully!`);
+      setEditId(null);
+      setName("");
+      setDescription("");
+      fetchSubjects();
+    } catch (err) {
+      toast.error("❌ " + err.message);
     }
   };
 
   // ✅ Delete subject
   const deleteSubject = async (id) => {
+    if (!["ADMIN"].includes(loggedInRole)) {
+      return toast.error("❌ Only admins can delete subjects");
+    }
+
     try {
-      const response = await fetch(`http://localhost:8081/api/subjects/${id}`, {
+      const res = await fetch(`http://localhost:8081/api/subjects/${id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || "Failed to delete subject");
-
-      setSuccess("✅ " + data.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete subject");
+      toast.success("🗑️ Subject deleted successfully!");
       fetchSubjects();
     } catch (err) {
-      setError("❌ " + err.message);
+      toast.error("❌ " + err.message);
     }
   };
 
   // ✅ Start editing
-  const startEdit = (subj) => {
-    setEditId(subj.id);
-    setTitle(subj.title);
-    setDescription(subj.description);
+  const startEdit = (subject) => {
+    setEditId(subject.id);
+    setName(subject.name);
+    setDescription(subject.description);
+  };
+
+  // ✅ Cancel editing
+  const cancelEdit = () => {
+    setEditId(null);
+    setName("");
+    setDescription("");
   };
 
   return (
     <div className="subjects-container">
-      <h2>📚 Subjects</h2>
+      <h2>📘 Subjects Management</h2>
+      <ToastContainer position="top-right" autoClose={3000} />
 
-      {/* Form */}
-      <form className="subjects-form" onSubmit={handleSubmit}>
+      <form className="subjects-form" onSubmit={editId ? submitEdit : addSubject}>
         <input
           type="text"
-          placeholder="Enter subject title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter Subject Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
         />
-        <textarea
-          placeholder="Enter description"
+        <input
+          type="text"
+          placeholder="Enter Subject Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-        ></textarea>
-        <button type="submit">{editId ? "Update Subject" : "Add Subject"}</button>
+          required
+        />
+        <button type="submit">{editId ? "✏️ Update Subject" : "Add Subject"}</button>
+        {editId && (
+          <button type="button" onClick={cancelEdit}>
+            ❌ Cancel
+          </button>
+        )}
       </form>
 
-      {/* Messages */}
-      {success && <p style={{ color: "green" }}>{success}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      <button className="load-btn" onClick={fetchSubjects} style={{ margin: "10px 0" }}>
+        🔄 Refresh Subjects
+      </button>
 
-      {/* Table */}
       <table className="subjects-table">
         <thead>
           <tr>
             <th>ID</th>
-            <th>Title</th>
-            <th>Description</th>
-            <th>Action</th>
+            <th>📚 Name</th>
+            <th>📝 Description</th>
+            <th>⚙️ Actions</th>
           </tr>
         </thead>
         <tbody>
-          {subjects.map((subj) => (
-            <tr key={subj.id}>
-              <td>{subj.id}</td>
-              <td>{subj.title}</td>
-              <td>{subj.description}</td>
-              <td>
-                <button
-                  className="edit-btn"
-                  onClick={() => startEdit(subj)}
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteSubject(subj.id)}
-                >
-                  ❌ Delete
-                </button>
-              </td>
+          {subjects.length > 0 ? (
+            subjects.map((subject) => (
+              <tr key={subject.id}>
+                <td>{subject.id}</td>
+                <td>{subject.name}</td>
+                <td>{subject.description}</td>
+                <td>
+                  {loggedInRole === "ADMIN" && (
+                    <>
+                      <button className="edit-btn" onClick={() => startEdit(subject)}>
+                        ✏️ Edit
+                      </button>
+                      <button className="delete-btn" onClick={() => deleteSubject(subject.id)}>
+                        🗑️ Delete
+                      </button>
+                    </>
+                  )}
+                  {loggedInRole !== "ADMIN" && <span>🔒 View only</span>}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4">No subjects found.</td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>

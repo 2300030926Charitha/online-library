@@ -1,33 +1,56 @@
 package com.example.demo.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import com.example.demo.service.CustomUserDetailsService;
+import com.example.demo.security.JwtAuthFilter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.*;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.*;
+
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
 
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
+
+    @Autowired
+    private JwtAuthFilter jwtAuthFilter;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for Postman testing
+        http.csrf(csrf -> csrf.disable())
+            .cors(cors -> {}) // ✅ Enable CORS
             .authorizeHttpRequests(auth -> auth
-                // Allow Whitelabel page and public endpoints
-                .requestMatchers("/", "/auth/**").permitAll()
-                .requestMatchers("/api/books/**").permitAll()
-                .requestMatchers("/api/authors/**").permitAll()
-                .requestMatchers("/api/subjects/**").permitAll()
-                // Protect all other API endpoints
-                .requestMatchers("/api/**").authenticated()
-                .anyRequest().permitAll() // Allow other requests (like /) for Whitelabel
-            );
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/api/books/**").authenticated()
+                .requestMatchers("/api/authors/**").hasRole("ADMIN")  // Only admins can modify authors
+                .requestMatchers("/api/subjects/**").hasRole("ADMIN") // ✅ only admins can add/edit/delete
+                .anyRequest().authenticated()
+            )
+            .userDetailsService(customUserDetailsService)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // React frontend
+        configuration.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean

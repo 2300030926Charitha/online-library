@@ -3,6 +3,7 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "book")
 public class Book {
 
     @Id
@@ -10,19 +11,62 @@ public class Book {
     private Long id;
 
     private String title;
+
     private String author;
+
     private int year;
 
-    // ✅ getters & setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    private String fileName;
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    private String filePath;
 
-    public String getAuthor() { return author; }
-    public void setAuthor(String author) { this.author = author; }
+    // ✅ Getters and Setters
 
-    public int getYear() { return year; }
-    public void setYear(int year) { this.year = year; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
 }

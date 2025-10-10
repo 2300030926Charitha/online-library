@@ -20,7 +20,7 @@ function App() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPass, setSignupPass] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
-  const [signupRole, setSignupRole] = useState("STUDENT"); // ✅ default role
+  const [signupRole, setSignupRole] = useState("STUDENT");
   const [signupError, setSignupError] = useState("");
 
   // ✅ Check localStorage on first render
@@ -33,6 +33,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("username"); // ✅ remove username
     setIsLoggedIn(false);
     alert("👋 Logged out successfully");
   };
@@ -53,24 +54,23 @@ function App() {
       });
 
       const data = await response.json();
-      if (!response.ok || !data.token) {
-        throw new Error(data.error || "Invalid credentials");
-      }
+      if (!response.ok || !data.token) throw new Error(data.error || "Invalid credentials");
 
-      // ✅ Save token + role
+      // ✅ Save token, role, and username
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("username", data.username);
 
       setIsLoggedIn(true);
       setIsLoginOpen(false);
       setLoginError("");
-      alert(`✅ Logged in successfully as ${loginUser} (${data.role})`);
+      alert(`✅ Logged in successfully as ${data.username} (${data.role})`);
     } catch (err) {
       setLoginError("❌ " + err.message);
     }
   };
 
-  // ✅ Signup (auto login)
+  // ✅ Signup
   const handleSignup = async (e) => {
     e.preventDefault();
 
@@ -91,23 +91,22 @@ function App() {
           username: signupName,
           email: signupEmail,
           password: signupPass,
-          role: signupRole, // ✅ include role
+          role: signupRole,
         }),
       });
 
       const data = await response.json();
-      if (!response.ok || !data.token) {
-        throw new Error(data.error || "Signup failed");
-      }
+      if (!response.ok || !data.token) throw new Error(data.error || "Signup failed");
 
-      // ✅ Save token + role
+      // ✅ Save token, role, and username
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("username", data.username);
 
       setIsLoggedIn(true);
       setIsSignupOpen(false);
       setSignupError("");
-      alert(`✅ Account created as ${signupRole} (${signupName})`);
+      alert(`✅ Account created as ${data.role} (${data.username})`);
     } catch (err) {
       setSignupError("❌ " + err.message);
     }
@@ -115,7 +114,6 @@ function App() {
 
   return (
     <Router>
-      {/* ✅ Navbar */}
       <nav className="navbar">
         <div className="logo">Online Library</div>
         <div className="nav-links">
@@ -129,10 +127,7 @@ function App() {
               <button className="login-btn" onClick={() => setIsLoginOpen(true)}>
                 Login
               </button>
-              <button
-                className="signup-btn"
-                onClick={() => setIsSignupOpen(true)}
-              >
+              <button className="signup-btn" onClick={() => setIsSignupOpen(true)}>
                 Sign Up
               </button>
             </>
@@ -144,7 +139,6 @@ function App() {
         </div>
       </nav>
 
-      {/* ✅ Routes */}
       <Routes>
         <Route
           path="/"
@@ -160,7 +154,7 @@ function App() {
         <Route path="/subjects" element={<Subjects />} />
       </Routes>
 
-      {/* ✅ Signup Modal */}
+      {/* Signup Modal */}
       {isSignupOpen && (
         <div className="modal-overlay">
           <div className="modal">
@@ -176,7 +170,6 @@ function App() {
                 onChange={(e) => setSignupName(e.target.value)}
                 placeholder="Enter username"
               />
-
               <label>Email</label>
               <input
                 type="email"
@@ -184,7 +177,6 @@ function App() {
                 onChange={(e) => setSignupEmail(e.target.value)}
                 placeholder="Enter email"
               />
-
               <label>Password</label>
               <input
                 type="password"
@@ -192,7 +184,6 @@ function App() {
                 onChange={(e) => setSignupPass(e.target.value)}
                 placeholder="Enter password"
               />
-
               <label>Confirm Password</label>
               <input
                 type="password"
@@ -200,18 +191,12 @@ function App() {
                 onChange={(e) => setSignupConfirm(e.target.value)}
                 placeholder="Re-enter password"
               />
-
-              {/* ✅ Role Dropdown */}
               <label>Role</label>
-              <select
-                value={signupRole}
-                onChange={(e) => setSignupRole(e.target.value)}
-              >
+              <select value={signupRole} onChange={(e) => setSignupRole(e.target.value)}>
                 <option value="STUDENT">Student</option>
                 <option value="AUTHOR">Author</option>
                 <option value="ADMIN">Admin</option>
               </select>
-
               {signupError && <p className="error">{signupError}</p>}
               <button type="submit" className="submit-btn">
                 Sign Up
@@ -221,7 +206,7 @@ function App() {
         </div>
       )}
 
-      {/* ✅ Login Modal */}
+      {/* Login Modal */}
       {isLoginOpen && (
         <div className="modal-overlay">
           <div className="modal">

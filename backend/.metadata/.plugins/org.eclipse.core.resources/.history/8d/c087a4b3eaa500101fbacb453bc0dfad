@@ -1,0 +1,165 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.model.User;
+import com.example.demo.repository.BookRepository;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:5173")
+public class BookController {
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    // ✅ Get all books (any logged in user or public)
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return bookRepository.findAll();
+    }
+
+    // ✅ Upload new book (Author or Admin)
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadBook(
+            @RequestParam String title,
+            @RequestParam int year,
+            @RequestParam MultipartFile file
+    ) throws IOException {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("{\"error\":\"User not found\"}");
+        }
+
+        User user = userOpt.get();
+        if (!user.getRole().equals("AUTHOR") && !user.getRole().equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("{\"error\":\"Only authors or admins can upload books\"}");
+        }
+
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(user.getUsername());
+        book.setYear(year);
+        book.setFileName(file.getBytes());
+        book.setFileName(file.getOriginalFilename());
+
+        bookRepository.save(book);
+        return ResponseEntity.ok(book);
+    }
+
+    // ✅ Download book (all roles)
+    @GetMapping("/download/{id}")
+    public ResponseEntity<byte[]> downloadBook(@PathVariable Long id) {
+        Optional<Book> bookOpt = bookRepository.findById(id);
+        if (bookOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        Book book = bookOpt.get();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDisposition(ContentDisposition.builder("attachment")
+                .filename(book.getFileName())
+                .build());
+
+        return new ResponseEntity<>(book.getFile(), headers, HttpStatus.OK);
+    }
+
+    // ✅ Update book (Author can edit own, Admin can edit any)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateBook(
+            @PathVariable Long id,
+            @RequestParam String title,
+            @RequestParam String year,
+            @RequestParam(required = false) MultipartFile file
+    ) throws IOException {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("{\"error\":\"User not found\"}");
+        }
+
+        User user = userOpt.get();
+
+        Optional<Book> bookOpt = bookRepository.findById(id);
+        if (bookOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("{\"error\":\"Book not found\"}");
+        }
+
+        Book book = bookOpt.get();
+
+        // Author can edit own, Admin can edit any
+        if (!user.getRole().equals("ADMIN") && !book.getAuthor().equals(user.getUsername())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("{\"error\":\"You are not authorized to edit this book\"}");
+        }
+
+        book.setTitle(title);
+        book.setYear(year);
+        if (file != null) {
+            book.setFileName(file.getBytes());
+            book.setFileName(file.getOriginalFilename());
+        }
+
+        bookRepository.save(book);
+        return ResponseEntity.ok(book);
+    }
+
+    // ✅ Delete book (only Admin)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("{\"error\":\"User not found\"}");
+        }
+
+        User user = userOpt.get();
+
+        if (!user.getRole().equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("{\"error\":\"Only admins can delete books\"}");
+        }
+
+        Optional<Book> bookOpt = bookRepository.findById(id);
+        if (bookOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("{\"error\":\"Book not found\"}");
+        }
+
+        bookRepository.delete(bookOpt.get());
+        return ResponseEntity.ok("{\"message\":\"Book deleted successfully\"}");
+    }
+}

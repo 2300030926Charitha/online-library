@@ -36,6 +36,19 @@ public class SubjectController {
             )
         );
     }
+ // ✅ Update subject
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSubject(@PathVariable Long id, @RequestBody Subject updated) {
+        return repo.findById(id)
+                .map(subject -> {
+                    subject.setName(updated.getName());
+                    subject.setDescription(updated.getDescription());
+                    repo.save(subject);
+                    return ResponseEntity.ok(Map.of("message", "✏️ Subject updated successfully", "subject", subject));
+                })
+                .orElse(ResponseEntity.badRequest().body(Map.of("error", "❌ Subject not found")));
+    }
+
 
     // ✅ Delete subject
     @DeleteMapping("/{id}")

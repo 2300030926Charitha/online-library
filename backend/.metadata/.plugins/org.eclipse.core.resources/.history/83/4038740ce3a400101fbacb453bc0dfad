@@ -1,0 +1,100 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.User;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/auth")
+@CrossOrigin(origins = "http://localhost:5173")
+public class AuthController {
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // ✅ Login
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.get("username"),
+                            loginRequest.get("password")
+                    )
+            );
+
+            User user = userRepository.findByUsername(loginRequest.get("username"))
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String token = jwtUtil.generateToken(user.getUsername());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("username", user.getUsername());
+            response.put("role", user.getRole());
+
+            return ResponseEntity.ok(response);
+
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid username or password!"));
+        }
+    }
+
+    // ✅ Signup
+    @PostMapping("/signup")
+    public ResponseEntity<?> signup(@RequestBody Map<String, String> signupRequest) {
+        String username = signupRequest.get("username");
+        String email = signupRequest.get("email");
+        String password = signupRequest.get("password");
+        String role = signupRequest.get("role");
+
+        if (username == null || username.isBlank() ||
+            email == null || email.isBlank() ||
+            password == null || password.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Username, email, and password are required!"));
+        }
+
+        if (userRepository.findByUsername(username).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Username already exists!"));
+        }
+
+        if (userRepository.findByEmail(email).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email already exists!"));
+        }
+
+        if (role == null || role.isBlank()) {
+            role = "STUDENT"; // Default role
+        }
+
+        User user = new User(username, email, passwordEncoder.encode(password), role);
+        userRepository.save(user);
+
+        String token = jwtUtil.generateToken(user.getUsername());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "User registered successfully!",
+                "token", token,
+                "username", user.getUsername(),
+                "role", user.getRole()
+        ));
+    }
+}

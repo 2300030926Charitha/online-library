@@ -1,0 +1,174 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.Book;
+import com.example.demo.repository.BookRepository;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/books")
+@CrossOrigin(origins = "http://localhost:5173")
+public class BookController {
+
+    private final BookRepository repo;
+
+    private final Path UPLOAD_DIR = Paths.get("C:/online-library/uploads");
+
+    public BookController(BookRepository repo) {
+        this.repo = repo;
+    }
+
+    // ✅ Fetch all books (all roles)
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return repo.findAll();
+    }
+
+    // ✅ Upload a new book (AUTHOR only)
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadBook(
+            @RequestParam("title") String title,
+            @RequestParam("year") int year,
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+
+        // Get logged-in username
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        // Check for file
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No file uploaded"));
+        }
+
+        // Ensure upload directory exists
+        File uploadDir = UPLOAD_DIR.toFile();
+        if (!uploadDir.exists() && !uploadDir.mkdirs()) {
+            throw new IOException("Could not create upload directory: " + UPLOAD_DIR.toAbsolutePath());
+        }
+
+        // Save file
+        String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        Path filePath = UPLOAD_DIR.resolve(filename);
+        file.transferTo(filePath.toFile());
+
+        // Save book metadata
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(username); // Author is logged-in user
+        book.setYear(year);
+        book.setFilePath(filePath.toString());
+
+        Book savedBook = repo.save(book);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "📘 Book uploaded successfully!",
+                "book", savedBook
+        ));
+    }
+
+    // ✅ Download book file (any role)
+    @GetMapping("/download/{id}")
+    public ResponseEntity<Resource> downloadBook(@PathVariable Long id) throws MalformedURLException {
+        Book book = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Book not found with ID " + id));
+
+        if (book.getFilePath() == null || book.getFilePath().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Path path = Paths.get(book.getFilePath());
+        if (!path.toFile().exists()) return ResponseEntity.notFound().build();
+
+        Resource resource = new UrlResource(path.toUri());
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
+                .body(resource);
+    }
+
+    // ✅ Update book (AUTHOR or ADMIN only)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateBook(
+            @PathVariable Long id,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "file", required = false) MultipartFile file
+    ) throws IOException {
+
+        Book existingBook = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Book not found with ID: " + id));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        // Only original author or admin can edit
+        if (!existingBook.getAuthor().equals(username) && !isAdmin) {
+            return ResponseEntity.status(403).body(Map.of("error", "❌ You are not allowed to edit this book."));
+        }
+
+        if (title != null && !title.isBlank()) existingBook.setTitle(title);
+        if (year != null) existingBook.setYear(year);
+
+        if (file != null && !file.isEmpty()) {
+            File uploadDir = UPLOAD_DIR.toFile();
+            if (!uploadDir.exists() && !uploadDir.mkdirs()) {
+                throw new IOException("Could not create upload directory: " + UPLOAD_DIR.toAbsolutePath());
+            }
+
+            // Delete old file
+            if (existingBook.getFilePath() != null) {
+                File oldFile = new File(existingBook.getFilePath());
+                if (oldFile.exists()) oldFile.delete();
+            }
+
+            String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path filePath = UPLOAD_DIR.resolve(filename);
+            file.transferTo(filePath.toFile());
+            existingBook.setFilePath(filePath.toString());
+        }
+
+        Book updatedBook = repo.save(existingBook);
+        return ResponseEntity.ok(Map.of("message", "✏️ Book updated successfully!", "book", updatedBook));
+    }
+
+    // ✅ Delete book (AUTHOR or ADMIN only)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
+        Book book = repo.findById(id).orElse(null);
+        if (book == null) return ResponseEntity.badRequest().body(Map.of("error", "Book not found"));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!book.getAuthor().equals(username) && !isAdmin) {
+            return ResponseEntity.status(403).body(Map.of("error", "❌ You are not allowed to delete this book."));
+        }
+
+        if (book.getFilePath() != null) {
+            File file = new File(book.getFilePath());
+            if (file.exists()) file.delete();
+        }
+
+        repo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "🗑️ Book deleted successfully!"));
+    }
+}
